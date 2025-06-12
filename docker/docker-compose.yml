@@ -12,7 +12,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       #- ../sql/init.sql:/docker-entrypoint-initdb.d/init.sql # Ruta relativa al directorio 'docker/'
-      - ../sql:/docker-entrypoint-initdb.d/ 
+      - ${SQL_INIT_PATH:-../sql}:/docker-entrypoint-initdb.d/ 
     ports:
       - '3309:3306'
     command: --default-authentication-plugin=mysql_native_password
