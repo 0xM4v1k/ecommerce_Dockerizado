@@ -2,7 +2,15 @@ version: '3.8'
 
 services:
   db:
-    image: mysql:8.0
+    # --- CAMBIO: Se elimina 'image: mysql:8.0' y se añade la sección 'build' ---
+    # En lugar de usar la imagen oficial de MySQL directamente, ahora le decimos a Docker
+    # que construya una imagen personalizada usando el Dockerfile que crearemos.
+    # Esto "incrusta" tu script init.sql directamente en la imagen,
+    # solucionando todos los problemas de montaje de volúmenes en Jenkins.
+    build:
+      context: ..  # El contexto de construcción es la raíz del proyecto
+      dockerfile: docker/mysql/Dockerfile # Ruta al nuevo Dockerfile para MySQL
+
     container_name: mysql-ecommerce-prod
     restart: always
     environment:
@@ -10,9 +18,13 @@ services:
       MYSQL_ROOT_PASSWORD: 'admin123'
       MYSQL_PASSWORD: 'admin123'
     volumes:
+      # Este volumen para los datos de la base de datos se mantiene. Es correcto.
       - mysql_data:/var/lib/mysql
-      #- ../sql/init.sql:/docker-entrypoint-initdb.d/init.sql # Ruta relativa al directorio 'docker/'
-      - ${SQL_INIT_PATH:-../sql}:/docker-entrypoint-initdb.d/ 
+
+      # --- CAMBIO: Se elimina la línea del volumen del script SQL ---
+      # Ya no es necesaria porque el script se COPIA dentro de la imagen durante la construcción.
+      # - ${SQL_INIT_PATH:-../sql}:/docker-entrypoint-initdb.d/
+
     ports:
       - '3309:3306'
     command: --default-authentication-plugin=mysql_native_password
@@ -21,13 +33,14 @@ services:
       timeout: 20s
       retries: 10
       start_period: 40s
-    networks:          # <--- CAMBIO: AÑADIDO ESTA SECCIÓN
-      - backend        # <--- CAMBIO: AÑADIDO ESTA LÍNEA
+    networks:
+      - backend
 
+  # El servicio 'app' no necesita ningún cambio. Se queda exactamente igual.
   app:
     build:
-      context: ..  # El contexto es el directorio raíz del proyecto (ecommerce_Dockerizado/)
-      dockerfile: docker/Dockerfile # El Dockerfile está en docker/Dockerfile dentro de ese contexto
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: product_app
     depends_on:
       db:
@@ -41,11 +54,11 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
     restart: unless-stopped
     networks:
-      - backend # El servicio 'app' ya estaba correctamente en esta red
+      - backend
 
 volumes:
-  mysql_data: # Define el volumen nombrado para persistencia de datos de MySQL
+  mysql_data:
 
 networks:
-  backend:    # Define la red lógica 'backend'
-    name: ecommerce_net # Le da el nombre físico 'ecommerce_net' a la red Docker
+  backend:
+    name: ecommerce_net
